@@ -24,7 +24,7 @@ param useFreeLimit bool = true
 @description('Comportement en cas d\'épuisement de la limite gratuite')
 param freeLimitExhaustionBehavior string = 'AutoPause'
 
-var sqlServerName = '${resourcePrefix}-${environmentName}-sql'
+var sqlServerName = '${resourcePrefix}-${environmentName}-sql-${uniqueString(resourceGroup().id)}'
 var sqlDatabaseName = '${resourcePrefix}-${environmentName}-db'
 
 resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
@@ -67,5 +67,5 @@ resource sqlDatabase 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
 }
 
 output sqlServerName string = sqlServer.name
-output sqlServerFqdn string = '${sqlServerName}.database.windows.net'
+output sqlServerFqdn string = '${sqlServer.name}.database.windows.net'
 output sqlDatabaseName string = sqlDatabase.name
