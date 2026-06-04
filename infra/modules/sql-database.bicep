@@ -63,8 +63,6 @@ resource sqlDatabase 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
   properties: {
     autoPauseDelay: 60
     minCapacity: 0.5
-    useFreeLimit: useFreeLimit
-    freeLimitExhaustionBehavior: freeLimitExhaustionBehavior
   }
 }
 
