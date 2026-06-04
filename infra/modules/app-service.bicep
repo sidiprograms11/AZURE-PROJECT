@@ -39,21 +39,60 @@ param appInsightsConnectionString string
 ])
 param skuName string = 'F1'
 
-// TODO : Le propriétaire du Rôle 1 doit créer ici :
-// 1. Un App Service Plan (hébergement Linux, SKU F1 par défaut ou B1 pour la démo).
-// 2. Un App Service (Web App) configuré avec :
-//    - HTTPS uniquement (`httpsOnly: true`)
-//    - TLS 1.2 minimum requis
-//    - FTPS désactivé (`ftpsState: 'Disabled'`)
-//    - L'identité managée assignée configurée (`appIdentityId`)
-//    - Les variables d'environnement (App Settings) connectées :
-//      - `APPINSIGHTS_CONNECTION_STRING`
-//      - `AZURE_CLIENT_ID` (pour l'identité managée)
-//      - Variables de connexion SQL passwordless (serveur, nom de BDD, etc.)
+var appServicePlanName = '${resourcePrefix}-${environmentName}-asp'
+var webAppName = '${resourcePrefix}-${environmentName}-app'
 
-// ===============================================================================
-// CONTRAT DE SORTIE (OUTPUTS)
-// ===============================================================================
+resource appServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
+  name: appServicePlanName
+  location: location
+  sku: {
+    name: skuName
+    tier: skuName == 'F1' ? 'Free' : 'Basic'
+  }
+  kind: 'linux'
+  properties: {
+    reserved: true
+  }
+}
 
-output appServiceUrl string = 'https://${resourcePrefix}-${environmentName}-app.azurewebsites.net'
-output appServicePlanName string = '${resourcePrefix}-${environmentName}-asp'
+resource webApp 'Microsoft.Web/sites@2022-09-01' = {
+  name: webAppName
+  location: location
+  kind: 'app,linux'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${appIdentityId}': {}
+    }
+  }
+  properties: {
+    serverFarmId: appServicePlan.id
+    httpsOnly: true
+    siteConfig: {
+      linuxFxVersion: 'NODE|22-lts'
+      minTlsVersion: '1.2'
+      ftpsState: 'Disabled'
+      appSettings: [
+        {
+          name: 'APPINSIGHTS_CONNECTION_STRING'
+          value: appInsightsConnectionString
+        }
+        {
+          name: 'AZURE_CLIENT_ID'
+          value: appIdentityClientId
+        }
+        {
+          name: 'SQL_SERVER_FQDN'
+          value: sqlServerFqdn
+        }
+        {
+          name: 'SQL_DATABASE_NAME'
+          value: sqlDatabaseName
+        }
+      ]
+    }
+  }
+}
+
+output appServiceUrl string = 'https://${webApp.properties.defaultHostName}'
+output appServicePlanName string = appServicePlan.name
