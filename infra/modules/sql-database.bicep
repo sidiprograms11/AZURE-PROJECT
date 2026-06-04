@@ -24,16 +24,50 @@ param useFreeLimit bool = true
 @description('Comportement en cas d\'épuisement de la limite gratuite')
 param freeLimitExhaustionBehavior string = 'AutoPause'
 
-// TODO : Le propriétaire du Rôle 3 doit créer ici :
-// 1. Un serveur logique Azure SQL avec authentification Entra-only (sans mot de passe).
-// 2. Une base de données Azure SQL configurée en Serverless (General Purpose).
-// 3. Une règle de pare-feu autorisant l'accès depuis les services Azure (0.0.0.0).
+var sqlServerName = '${resourcePrefix}-${environmentName}-sql'
+var sqlDatabaseName = '${resourcePrefix}-${environmentName}-db'
 
-// ===============================================================================
-// CONTRAT DE SORTIE (OUTPUTS)
-// Ces valeurs permettent d'interconnecter ce module avec les autres (ex: Rôle 1).
-// ===============================================================================
+resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
+  name: sqlServerName
+  location: location
+  properties: {
+    administrators: {
+      administratorType: 'ActiveDirectory'
+      principalType: 'Application'
+      login: 'smart-notes-managed-identity'
+      sid: appIdentityPrincipalId
+      azureADOnlyAuthentication: true
+    }
+  }
+}
 
-output sqlServerName string = '${resourcePrefix}-${environmentName}-sql'
-output sqlServerFqdn string = '${resourcePrefix}-${environmentName}-sql.database.windows.net'
-output sqlDatabaseName string = '${resourcePrefix}-${environmentName}-db'
+resource sqlFirewallAzureServices 'Microsoft.Sql/servers/firewallRules@2023-08-01-preview' = {
+  name: 'AllowAzureServices'
+  parent: sqlServer
+  properties: {
+    startIpAddress: '0.0.0.0'
+    endIpAddress: '0.0.0.0'
+  }
+}
+
+resource sqlDatabase 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
+  name: sqlDatabaseName
+  parent: sqlServer
+  location: location
+  sku: {
+    name: 'GP_S_Gen5_1'
+    tier: 'GeneralPurpose'
+    family: 'Gen5'
+    capacity: 1
+  }
+  properties: {
+    autoPauseDelay: 60
+    minCapacity: 0.5
+    useFreeLimit: useFreeLimit
+    freeLimitExhaustionBehavior: freeLimitExhaustionBehavior
+  }
+}
+
+output sqlServerName string = sqlServer.name
+output sqlServerFqdn string = sqlServer.properties.fullyQualifiedDomainName
+output sqlDatabaseName string = sqlDatabase.name
