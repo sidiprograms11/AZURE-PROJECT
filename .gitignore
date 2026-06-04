@@ -1,0 +1,84 @@
+# ==========================================
+# GITIGNORE - Smart Notes Cloud Security Project
+# Objectif : Empêcher le commit accidentel de secrets ou d'artéfacts de build.
+# ==========================================
+
+# Secrets et Configuration Locale (CRITIQUE pour la Sécurité)
+.env
+.env.local
+.env.*.local
+*.env
+*.pem
+*.key
+*.cert
+*.pfx
+*.p12
+*.publishsettings
+azure.json
+secrets.json
+local.settings.json
+
+# .NET (C# / ASP.NET Core)
+bin/
+obj/
+appsettings.Development.json
+appsettings.local.json
+appsettings.*.json
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Node.js (Frontend / Backend Express)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+dist/
+build/
+.next/
+.nuxt/
+out/
+.cache/
+
+# Python (Flask / Fast API / Django)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.venv
+venv/
+ENV/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Bicep, ARM et Outils Cloud
+*.writeback
+.azure/
+.vs/
+.vscode/
+*.bicep.json
+*~
+.DS_Store
+Thumbs.db

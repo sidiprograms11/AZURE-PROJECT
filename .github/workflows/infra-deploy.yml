@@ -1,0 +1,52 @@
+# ===============================================================================
+# WORKFLOW : Déploiement de l'Infrastructure Azure Bicep
+# DÉCLENCHEMENT : Manuel uniquement (workflow_dispatch) pour éviter les déploiements
+# intempestifs et limiter les coûts.
+# ===============================================================================
+
+name: Azure Infrastructure Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environnement de déploiement'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-infra:
+    name: Deploy Bicep Templates
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Récupération du Code Source
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Connexion sécurisée à Azure via un Service Principal (Secrets GitHub)
+      # Le secret AZURE_CREDENTIALS doit contenir le JSON généré par l'outil CLI:
+      # az ad sp create-for-rbac --name "sp-smart-notes-github" --role contributor --scopes /subscriptions/<subId>/resourceGroups/rg-smart-notes-dev --sdk-auth
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # 3. Déploiement du Groupe de Ressources principal et des ressources Bicep
+      # Remarque : Le Resource Group (rg-smart-notes-dev) doit déjà être créé dans Azure
+      # ou créé dans cette étape. Ici, on déploie au niveau du Resource Group existant.
+      - name: Deploy Azure Resources
+        uses: azure/arm-deploy@v2
+        with:
+          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          resourceGroupName: rg-smart-notes-dev
+          template: ./infra/main.bicep
+          parameters: ./infra/parameters/dev.bicepparam
+          failOnTargetStateOnlyModification: false
