@@ -14,19 +14,30 @@ param environmentName string
 @description('Préfixe des ressources (ex: sn)')
 param resourcePrefix string
 
-// TODO : Le propriétaire du Rôle 4 doit créer ici :
-// 1. Un workspace Log Analytics pour stocker tous les logs de l'application et de l'infra.
-// 2. Une instance Application Insights (liée au workspace) pour le monitoring applicatif.
-// 3. (Optionnel) Documenter Defender for Cloud en tier gratuit (CSPM fondamental).
-// 
-// ATTENTION BUDGET ÉTUDIANT : 
-// - NE PAS activer de plan Defender for Cloud payant (facturation par ressource/heure).
-// - Configurer un Daily Cap (limite journalière) bas sur le workspace Log Analytics (ex: 0.023 Go).
+var logAnalyticsWorkspaceName = '${resourcePrefix}-${environmentName}-law'
+var appInsightsName = '${resourcePrefix}-${environmentName}-appi'
 
-// ===============================================================================
-// CONTRAT DE SORTIE (OUTPUTS)
-// Ces valeurs permettent d'interconnecter ce module avec les autres (ex: Rôle 1).
-// ===============================================================================
+resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
+  name: logAnalyticsWorkspaceName
+  location: location
+  properties: {
+    sku: {
+      name: 'PerGB2018'
+    }
+    retentionInDays: 30
+    dailyQuotaGb: 0.023
+  }
+}
 
-output appInsightsConnectionString string = 'InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://westeurope-0.in.applicationinsights.azure.com/;LiveEndpoint=https://westeurope.livediagnostics.monitor.azure.com/'
-output logAnalyticsWorkspaceId string = '/subscriptions/${subscription().subscriptionId}/resourcegroups/${resourceGroup().name}/providers/Microsoft.OperationalInsights/workspaces/${resourcePrefix}-${environmentName}-law'
+resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: appInsightsName
+  location: location
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    WorkspaceResourceId: logAnalyticsWorkspace.id
+  }
+}
+
+output appInsightsConnectionString string = appInsights.properties.ConnectionString
+output logAnalyticsWorkspaceId string = logAnalyticsWorkspace.id
