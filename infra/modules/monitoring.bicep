@@ -20,12 +20,14 @@ var appInsightsName = '${resourcePrefix}-${environmentName}-appi'
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: logAnalyticsWorkspaceName
   location: location
+  sku: {
+    name: 'PerGB2018'
+  }
   properties: {
-    sku: {
-      name: 'PerGB2018'
-    }
     retentionInDays: 30
-    dailyQuotaGb: 0.023
+    workspaceCapping: {
+      dailyQuotaGb: 0.023
+    }
   }
 }
 
