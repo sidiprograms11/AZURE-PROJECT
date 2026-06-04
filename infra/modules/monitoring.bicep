@@ -26,7 +26,7 @@ resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10
   properties: {
     retentionInDays: 30
     workspaceCapping: {
-      dailyQuotaGb: 0.023
+     dailyQuotaGb: json('0.023')
     }
   }
 }
