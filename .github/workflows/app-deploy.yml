@@ -1,10 +1,10 @@
 # ===============================================================================
 # WORKFLOW : Déploiement du Code de l'Application Smart Notes
-# DÉCLENCHEMENT : Manuel (workflow_dispatch) ou automatique après validation de PR.
-# NOTE CRITIQUE : Ce workflow ne crée PAS l'infrastructure. L'App Service doit
-# déjà exister et avoir été créé préalablement via le workflow 'infra-deploy.yml'.
+# DÉCLENCHEMENT : Manuel (workflow_dispatch) ou push sur main dans app/
+# NOTE CRITIQUE : Ce workflow ne crée PAS l'infrastructure.
+# L'App Service doit déjà exister (déployé via infra-deploy.yml).
+# AUTH : Publish Profile (moindre privilège — limité à sn-dev-app uniquement)
 # ===============================================================================
-
 name: Application Code Deploy
 
 on:
@@ -21,45 +21,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Récupération du Code
+      # 1. Récupération du code
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # =======================================================================
-      # CONFIGURATION RUNTIME (Au choix du Rôle 1 - exemple Node.js ici)
-      # =======================================================================
+      # 2. Node.js 20 LTS
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './app/frontend/package-lock.json' # Ajuster selon le setup réel
 
-      # Exemple alternatif pour .NET Core :
-      # - name: Setup .NET SDK
-      #   uses: actions/setup-dotnet@v4
-      #   with:
-      #     dotnet-version: '8.0.x'
+      # 3. Installation des dépendances
+      - name: Install Dependencies
+        working-directory: ./app/backend
+        run: npm ci --omit=dev
 
-      # 2. Build de l'Application (Compilation, tests et package de sortie)
-      # TODO: Le Rôle 1 écrira les étapes réelles ici.
-      - name: Install Dependencies and Build
-        run: |
-          echo "Simulation du build de l'application..."
-          # cd app/backend && npm install && npm run build
-          # cd ../frontend && npm install && npm run build
-
-      # 3. Connexion à Azure
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      # 4. Déploiement sur le Web App existant
-      # Utilise le secret AZURE_WEBAPP_NAME (contenant ex: sn-dev-app)
+      # 4. Déploiement sur l'App Service existant
+      # Utilise le Publish Profile (secret AZURE_WEBAPP_PUBLISH_PROFILE)
+      # Principe moindre privilège : ce profil ne donne accès qu'à sn-dev-app,
+      # rien d'autre sur l'abonnement Azure.
       - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
+        uses: azure/webapps-deploy@v2
         with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME }} # Nom de l'App Service cible (ex: sn-dev-app)
-          # Optionnel : publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }} (si connexion par profil)
-          package: . # Répertoire contenant le package de build
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./app/backend
