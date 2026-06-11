@@ -34,7 +34,7 @@ jobs:
       # 3. Installation des dépendances
       - name: Install Dependencies
         working-directory: ./app/backend
-        run: npm ci --omit=dev
+        run: npm install --omit=dev
 
       # 4. Déploiement sur l'App Service existant
       # Utilise le Publish Profile (secret AZURE_WEBAPP_PUBLISH_PROFILE)
