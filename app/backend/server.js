@@ -29,7 +29,78 @@ app.get("/notes", async (req, res) => {
     const result = await pool.request().query("SELECT * FROM Notes");
     res.json(result.recordset);
   } catch (err) {
-    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/notes", async (req, res) => {
+  try {
+    const { title, content } = req.body;
+
+    const pool = await sql.connect(dbConfig);
+
+    await pool.request()
+      .input("title", sql.NVarChar(200), title)
+      .input("content", sql.NVarChar(sql.MAX), content)
+      .query(`
+        INSERT INTO Notes (Title, Content)
+        VALUES (@title, @content)
+      `);
+
+    res.status(201).json({
+      message: "Note created successfully"
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/notes/:id", async (req, res) => {
+  try {
+    const { title, content } = req.body;
+    const id = req.params.id;
+
+    const pool = await sql.connect(dbConfig);
+
+    await pool.request()
+      .input("id", sql.Int, id)
+      .input("title", sql.NVarChar(200), title)
+      .input("content", sql.NVarChar(sql.MAX), content)
+      .query(`
+        UPDATE Notes
+        SET Title = @title,
+            Content = @content
+        WHERE Id = @id
+      `);
+
+    res.json({
+      message: "Note updated successfully"
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/notes/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const pool = await sql.connect(dbConfig);
+
+    await pool.request()
+      .input("id", sql.Int, id)
+      .query(`
+        DELETE FROM Notes
+        WHERE Id = @id
+      `);
+
+    res.json({
+      message: "Note deleted successfully"
+    });
+
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
