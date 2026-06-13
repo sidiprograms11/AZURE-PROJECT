@@ -37,7 +37,68 @@ async function getPool() {
 }
 
 app.get("/", (req, res) => {
-  res.send("Smart Notes connected to Azure SQL Database through Azure Key Vault");
+  res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Smart Notes</title>
+</head>
+<body>
+  <h1>Smart Notes</h1>
+  <p>Application sécurisée sur Azure App Service, Azure SQL et Key Vault.</p>
+
+  <h2>Ajouter une note</h2>
+  <input id="title" placeholder="Titre">
+  <br><br>
+  <textarea id="content" placeholder="Contenu"></textarea>
+  <br><br>
+  <button onclick="addNote()">Ajouter</button>
+
+  <h2>Notes</h2>
+  <div id="notes"></div>
+
+  <script>
+    async function loadNotes() {
+      const res = await fetch('/notes');
+      const notes = await res.json();
+
+      document.getElementById('notes').innerHTML = notes.map(note => \`
+        <div style="border:1px solid #ccc; padding:10px; margin:10px;">
+          <h3>\${note.Title}</h3>
+          <p>\${note.Content}</p>
+          <button onclick="deleteNote(\${note.Id})">Supprimer</button>
+        </div>
+      \`).join('');
+    }
+
+    async function addNote() {
+      const title = document.getElementById('title').value;
+      const content = document.getElementById('content').value;
+
+      await fetch('/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content })
+      });
+
+      document.getElementById('title').value = '';
+      document.getElementById('content').value = '';
+      loadNotes();
+    }
+
+    async function deleteNote(id) {
+      await fetch('/notes/' + id, {
+        method: 'DELETE'
+      });
+
+      loadNotes();
+    }
+
+    loadNotes();
+  </script>
+</body>
+</html>
+  `);
 });
 
 app.get("/health", (req, res) => {
