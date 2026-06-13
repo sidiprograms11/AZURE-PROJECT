@@ -1,22 +1,43 @@
 const express = require("express");
 const sql = require("mssql");
+const { DefaultAzureCredential } = require("@azure/identity");
+const { SecretClient } = require("@azure/keyvault-secrets");
 
 const app = express();
 app.use(express.json());
 
-const dbConfig = {
-  server: process.env.SQL_SERVER_FQDN,
-  database: process.env.SQL_DATABASE_NAME,
-  options: {
-    encrypt: true
-  },
-  authentication: {
-    type: "azure-active-directory-msi-app-service"
-  }
-};
+let dbConfig = null;
+
+async function loadDbConfig() {
+  if (dbConfig) return dbConfig;
+
+  const credential = new DefaultAzureCredential();
+  const client = new SecretClient(process.env.KEY_VAULT_URL, credential);
+
+  const sqlServer = await client.getSecret("sql-server-fqdn");
+  const sqlDatabase = await client.getSecret("sql-database-name");
+
+  dbConfig = {
+    server: sqlServer.value,
+    database: sqlDatabase.value,
+    options: {
+      encrypt: true
+    },
+    authentication: {
+      type: "azure-active-directory-msi-app-service"
+    }
+  };
+
+  return dbConfig;
+}
+
+async function getPool() {
+  const config = await loadDbConfig();
+  return await sql.connect(config);
+}
 
 app.get("/", (req, res) => {
-  res.send("Smart Notes connected to Azure SQL Database");
+  res.send("Smart Notes connected to Azure SQL Database through Azure Key Vault");
 });
 
 app.get("/health", (req, res) => {
@@ -25,7 +46,7 @@ app.get("/health", (req, res) => {
 
 app.get("/notes", async (req, res) => {
   try {
-    const pool = await sql.connect(dbConfig);
+    const pool = await getPool();
     const result = await pool.request().query("SELECT * FROM Notes");
     res.json(result.recordset);
   } catch (err) {
@@ -37,7 +58,7 @@ app.post("/notes", async (req, res) => {
   try {
     const { title, content } = req.body;
 
-    const pool = await sql.connect(dbConfig);
+    const pool = await getPool();
 
     await pool.request()
       .input("title", sql.NVarChar(200), title)
@@ -47,10 +68,7 @@ app.post("/notes", async (req, res) => {
         VALUES (@title, @content)
       `);
 
-    res.status(201).json({
-      message: "Note created successfully"
-    });
-
+    res.status(201).json({ message: "Note created successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -61,7 +79,7 @@ app.put("/notes/:id", async (req, res) => {
     const { title, content } = req.body;
     const id = req.params.id;
 
-    const pool = await sql.connect(dbConfig);
+    const pool = await getPool();
 
     await pool.request()
       .input("id", sql.Int, id)
@@ -74,10 +92,7 @@ app.put("/notes/:id", async (req, res) => {
         WHERE Id = @id
       `);
 
-    res.json({
-      message: "Note updated successfully"
-    });
-
+    res.json({ message: "Note updated successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -87,7 +102,7 @@ app.delete("/notes/:id", async (req, res) => {
   try {
     const id = req.params.id;
 
-    const pool = await sql.connect(dbConfig);
+    const pool = await getPool();
 
     await pool.request()
       .input("id", sql.Int, id)
@@ -96,10 +111,7 @@ app.delete("/notes/:id", async (req, res) => {
         WHERE Id = @id
       `);
 
-    res.json({
-      message: "Note deleted successfully"
-    });
-
+    res.json({ message: "Note deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
